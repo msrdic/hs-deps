@@ -6,10 +6,10 @@ import System.IO.Strict (hGetContents)
 filePath :: FilePath
 filePath = "./src/Main.hs"
 
-content :: Handle -> IO String
-content = hGetContents
+getModuleContent :: Handle -> IO String
+getModuleContent = hGetContents
 
 main :: IO ()
 main = do
-  c <- withFile filePath ReadMode content
+  c <- withFile filePath ReadMode getModuleContent
   print c
