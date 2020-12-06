@@ -20,6 +20,7 @@ executable hs-deps
   build-depends:       base >= 4.7 && < 5
                      , strict
                      , pretty-simple
+                     , directory
 
 test-suite integration
   hs-source-dirs:      test
