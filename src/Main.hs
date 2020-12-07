@@ -20,14 +20,12 @@ getModuleContent = hGetContents
 data ImportDecl = ImportDecl { importName :: String
                              , qual :: Bool
                              , qualName :: Maybe String
-                             }
-                 | NoImportDecl
-                 deriving (Eq, Show)
+                             } deriving (Eq, Show)
 
 data ModuleImportDecls = 
   ModuleImportDecls { modulePath :: String
                     , fileName :: String
-                    , imports :: [ImportDecl]
+                    , imports :: [Maybe ImportDecl]
                     } deriving (Eq, Show)
 
 parseModule :: FilePath -> IO ModuleImportDecls
@@ -35,7 +33,7 @@ parseModule filePath = do
   PP.pPrint filePath
   c <- withFile filePath ReadMode getModuleContent
   let res = readP_to_S importsParser c
-      result = filter (/= NoImportDecl) $ fst $ last res
+      result = filter (/= Nothing) $ fst $ last res
       fname = last $ splitPath filePath
   return $ ModuleImportDecls filePath fname result
 
@@ -68,18 +66,18 @@ notWhitespace = not . isSpace
 openParen :: Char -> Bool
 openParen = (== '(')
 
-importsParser :: ReadP [ImportDecl]
+importsParser :: ReadP [Maybe ImportDecl]
 importsParser = many importOrSkip
 
-basicImport :: ReadP ImportDecl
+basicImport :: ReadP (Maybe ImportDecl)
 basicImport = do
   _ <- importLit
   _ <- munch1 isSpace
   m <- moduleName
   _ <- munch1 isSpace
-  return $ ImportDecl m False Nothing
+  return $ Just (ImportDecl m False Nothing)
 
-qualImport :: ReadP ImportDecl
+qualImport :: ReadP (Maybe ImportDecl)
 qualImport = do
   _ <- importLit
   _ <- munch1 isSpace
@@ -87,9 +85,9 @@ qualImport = do
   _ <- munch1 isSpace
   m <- moduleName
   skipSpaces
-  return $ ImportDecl m True Nothing
+  return $ Just (ImportDecl m True Nothing)
 
-qualAsImport :: ReadP ImportDecl
+qualAsImport :: ReadP (Maybe ImportDecl)
 qualAsImport = do
   _ <- importLit
   _ <- munch1 isSpace
@@ -101,17 +99,17 @@ qualAsImport = do
   _ <- munch1 isSpace
   q <- moduleName
   skipSpaces
-  return $ ImportDecl m True (Just q)
+  return $ Just (ImportDecl m True (Just q))
 
-skipLine :: ReadP ImportDecl
+skipLine :: ReadP (Maybe ImportDecl)
 skipLine = do
   _ <- munch1 (/='\n')
   skipSpaces
-  return NoImportDecl
+  return Nothing
 
-importParser :: ReadP ImportDecl
+importParser :: ReadP (Maybe ImportDecl)
 importParser =
   choice [basicImport, qualImport, qualAsImport]
 
-importOrSkip :: ReadP ImportDecl
+importOrSkip :: ReadP (Maybe ImportDecl)
 importOrSkip = importParser <++ skipLine
