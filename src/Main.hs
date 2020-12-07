@@ -1,21 +1,27 @@
+
+
 module Main (main) where
 
 import System.IO (Handle, IOMode(ReadMode), withFile)
+
 import System.IO.Strict (hGetContents)
 import System.Directory.Recursive ( getFilesRecursive )
 import System.Environment (getArgs)
-import System.FilePath.Posix ( splitPath )
 
 import Control.Monad (filterM, (>=>), forM)
 
-import Text.ParserCombinators.ReadP ((<++), choice, many, skipSpaces, munch1, readP_to_S, ReadP, string)
-import qualified Text.Pretty.Simple as PP
+import Text.ParserCombinators.ReadP (eof, munch, manyTill, (<++), choice, skipSpaces, munch1, readP_to_S, ReadP, string)
 
 import Data.Char (isSpace)
 import Data.List (isSuffixOf)
 
+import Algebra.Graph (edges)
+import Algebra.Graph.Export.Dot (exportAsIs )
+
 getModuleContent :: Handle -> IO String
 getModuleContent = hGetContents
+
+type ModuleName = String
 
 data ImportDecl = ImportDecl { importName :: String
                              , qual :: Bool
@@ -24,25 +30,37 @@ data ImportDecl = ImportDecl { importName :: String
 
 data ModuleImportDecls = 
   ModuleImportDecls { modulePath :: String
-                    , fileName :: String
+                    , moduleName_ :: Maybe ModuleName
                     , imports :: [Maybe ImportDecl]
                     } deriving (Eq, Show)
 
 parseModule :: FilePath -> IO ModuleImportDecls
 parseModule filePath = do
-  PP.pPrint filePath
   c <- withFile filePath ReadMode getModuleContent
-  let res = readP_to_S importsParser c
-      result = filter (/= Nothing) $ fst $ last res
-      fname = last $ splitPath filePath
-  return $ ModuleImportDecls filePath fname result
+  let res = readP_to_S mainParser c
+      result = if null res then (Just ".", []) else fst $ last res
+      mname = fst result
+  return $ ModuleImportDecls filePath mname (filter (/= Nothing) $ snd result)
 
 main :: IO ()
 main = do
   dirs <- getArgs
-  PP.pPrint dirs
   results <- forM dirs (getFilesRecursive >=> filterM hsOrLhs >=> mapM parseModule)
-  PP.pPrint results
+  let g = edges $ edges' $ concatMap toEdges $ concat results
+  putStrLn $ exportAsIs g
+
+edges' :: [Maybe (String, String)] -> [(String, String)]
+edges' [] = []
+edges' (Nothing:ps) = edges' ps
+edges' (Just p:ps) = p:edges' ps
+
+toEdges :: ModuleImportDecls -> [Maybe (String, String)]
+toEdges mid = map (toEdge (moduleName_ mid)) (imports mid)
+
+toEdge :: Maybe ModuleName -> Maybe ImportDecl -> Maybe (String, String)
+toEdge _ Nothing = Nothing
+toEdge Nothing (Just im) = Just (".", importName im)
+toEdge (Just from) (Just im) = Just (from, importName im)
 
 hsOrLhs :: FilePath -> IO Bool
 hsOrLhs fp = return $ (".hs" `isSuffixOf` fp) || (".lhs" `isSuffixOf` fp)
@@ -53,6 +71,8 @@ qualifiedLit :: ReadP String
 qualifiedLit = string "qualified"
 asLit :: ReadP String
 asLit = string "as"
+moduleLit :: ReadP String
+moduleLit = string "module"
 
 moduleName :: ReadP String
 moduleName = munch1 endModuleName
@@ -66,15 +86,13 @@ notWhitespace = not . isSpace
 openParen :: Char -> Bool
 openParen = (== '(')
 
-importsParser :: ReadP [Maybe ImportDecl]
-importsParser = many importOrSkip
-
 basicImport :: ReadP (Maybe ImportDecl)
 basicImport = do
   _ <- importLit
   _ <- munch1 isSpace
   m <- moduleName
-  _ <- munch1 isSpace
+  _ <- munch (/= '\n')
+  skipSpaces
   return $ Just (ImportDecl m False Nothing)
 
 qualImport :: ReadP (Maybe ImportDecl)
@@ -84,6 +102,7 @@ qualImport = do
   _ <- qualifiedLit
   _ <- munch1 isSpace
   m <- moduleName
+  _ <- munch (/= '\n')
   skipSpaces
   return $ Just (ImportDecl m True Nothing)
 
@@ -98,18 +117,40 @@ qualAsImport = do
   _ <- asLit
   _ <- munch1 isSpace
   q <- moduleName
+  _ <- munch (/= '\n')
   skipSpaces
   return $ Just (ImportDecl m True (Just q))
 
-skipLine :: ReadP (Maybe ImportDecl)
+skipLine :: ReadP (Maybe a)
 skipLine = do
-  _ <- munch1 (/='\n')
+  _ <- munch (/= '\n')
   skipSpaces
   return Nothing
+
+skipLineS :: ReadP String
+skipLineS = skipLine >> return ""
 
 importParser :: ReadP (Maybe ImportDecl)
 importParser =
   choice [basicImport, qualImport, qualAsImport]
 
-importOrSkip :: ReadP (Maybe ImportDecl)
-importOrSkip = importParser <++ skipLine
+moduleNameParser :: ReadP (Maybe ModuleName)
+moduleNameParser = do
+  m <- moduleName
+  return $ Just m
+
+moduleLit_ :: ReadP ()
+moduleLit_ = moduleLit >> return ()
+
+moduleLitOrEof :: ReadP ()
+moduleLitOrEof = moduleLit_ <++ eof
+
+mainParser :: ReadP (Maybe ModuleName, [Maybe ImportDecl])
+mainParser = do
+  _ <- manyTill skipLineS moduleLitOrEof
+  _ <- munch1 isSpace
+  mn <- moduleNameParser
+  _ <- munch (/= '\n')
+  skipSpaces
+  im <- manyTill (importParser <++ skipLine) eof
+  return (mn, im)
