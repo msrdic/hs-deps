@@ -7,8 +7,10 @@ import Text.ParserCombinators.ReadP ((<++), choice, many, skipSpaces, munch1, re
 
 import Text.Pretty.Simple (pPrint)
 import Data.Char (isSpace)
-import System.Directory (listDirectory)
-import Control.Monad (forM)
+import Control.Monad (filterM, forM)
+
+import System.Directory.Recursive ( getDirRecursive )
+import System.Directory (doesFileExist)
 
 getModuleContent :: Handle -> IO String
 getModuleContent = hGetContents
@@ -26,17 +28,18 @@ data ModuleImportDecls =
                     , imports :: [ImportDecl]
                     } deriving (Eq, Show)
 
-parseModule :: String -> FilePath -> IO ModuleImportDecls
-parseModule fname filePath = do
+parseModule :: FilePath -> IO ModuleImportDecls
+parseModule filePath = do
   c <- withFile filePath ReadMode getModuleContent
   let res = readP_to_S importsParser c
       result = filter (/= NoImportDecl) $ fst $ last res
+      fname = filePath
   return $ ModuleImportDecls filePath fname result
 
 main :: IO ()
 main = do
-  dir <- listDirectory "./data/"
-  results <- forM dir (\fname -> parseModule fname ("./data/" ++ fname))
+  dir <- filterM doesFileExist =<< getDirRecursive "./data/"
+  results <- forM dir parseModule
   pPrint results
 
 importLit :: ReadP String

@@ -28,6 +28,8 @@ executable hs-deps
                      , strict
                      , pretty-simple
                      , directory
+                     , dir-traverse
+                     , system-fileio
 
 test-suite integration
   hs-source-dirs:      test

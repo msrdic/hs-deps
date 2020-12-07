@@ -3,7 +3,14 @@
 # For more information, please see the documentation at:
 #   https://docs.haskellstack.org/en/stable/lock_files
 
-packages: []
+packages:
+- completed:
+    hackage: dir-traverse-0.2.2.3@sha256:cbb1e3d0d1f9a3cfcbdc58071fba8a2063bae36bab68279647a331f9a408c18a,2137
+    pantry-tree:
+      size: 389
+      sha256: ba5b192c9bbd353ca46b3d308d4519ecf7a298e1d559c4350ddcee9591112246
+  original:
+    hackage: dir-traverse-0.2.2.3
 snapshots:
 - completed:
     size: 532835
