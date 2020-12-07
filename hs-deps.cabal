@@ -29,6 +29,7 @@ executable hs-deps
                      , pretty-simple
                      , directory
                      , dir-traverse
+                     , filepath
 
 test-suite integration
   hs-source-dirs:      test

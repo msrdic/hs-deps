@@ -2,15 +2,17 @@ module Main (main) where
 
 import System.IO (Handle, IOMode(ReadMode), withFile)
 import System.IO.Strict (hGetContents)
+import System.Directory.Recursive ( getFilesRecursive )
+import System.Environment (getArgs)
+import System.FilePath.Posix ( splitPath )
+
+import Control.Monad (filterM, (>=>), forM)
 
 import Text.ParserCombinators.ReadP ((<++), choice, many, skipSpaces, munch1, readP_to_S, ReadP, string)
+import qualified Text.Pretty.Simple as PP
 
-import Text.Pretty.Simple (pPrint)
 import Data.Char (isSpace)
-import Control.Monad (filterM, forM)
-
-import System.Directory.Recursive ( getDirRecursive )
-import System.Directory (doesFileExist)
+import Data.List (isSuffixOf)
 
 getModuleContent :: Handle -> IO String
 getModuleContent = hGetContents
@@ -30,17 +32,22 @@ data ModuleImportDecls =
 
 parseModule :: FilePath -> IO ModuleImportDecls
 parseModule filePath = do
+  PP.pPrint filePath
   c <- withFile filePath ReadMode getModuleContent
   let res = readP_to_S importsParser c
       result = filter (/= NoImportDecl) $ fst $ last res
-      fname = filePath
+      fname = last $ splitPath filePath
   return $ ModuleImportDecls filePath fname result
 
 main :: IO ()
 main = do
-  dir <- filterM doesFileExist =<< getDirRecursive "./data/"
-  results <- forM dir parseModule
-  pPrint results
+  dirs <- getArgs
+  PP.pPrint dirs
+  results <- forM dirs (getFilesRecursive >=> filterM hsOrLhs >=> mapM parseModule)
+  PP.pPrint results
+
+hsOrLhs :: FilePath -> IO Bool
+hsOrLhs fp = return $ (".hs" `isSuffixOf` fp) || (".lhs" `isSuffixOf` fp)
 
 importLit :: ReadP String
 importLit = string "import"
@@ -67,17 +74,17 @@ importsParser = many importOrSkip
 basicImport :: ReadP ImportDecl
 basicImport = do
   _ <- importLit
-  skipSpaces
+  _ <- munch1 isSpace
   m <- moduleName
-  skipSpaces
+  _ <- munch1 isSpace
   return $ ImportDecl m False Nothing
 
 qualImport :: ReadP ImportDecl
 qualImport = do
   _ <- importLit
-  skipSpaces
+  _ <- munch1 isSpace
   _ <- qualifiedLit
-  skipSpaces
+  _ <- munch1 isSpace
   m <- moduleName
   skipSpaces
   return $ ImportDecl m True Nothing
@@ -85,13 +92,13 @@ qualImport = do
 qualAsImport :: ReadP ImportDecl
 qualAsImport = do
   _ <- importLit
-  skipSpaces
+  _ <- munch1 isSpace
   _ <- qualifiedLit
-  skipSpaces
+  _ <- munch1 isSpace
   m <- moduleName
-  skipSpaces
+  _ <- munch1 isSpace
   _ <- asLit
-  skipSpaces
+  _ <- munch1 isSpace
   q <- moduleName
   skipSpaces
   return $ ImportDecl m True (Just q)

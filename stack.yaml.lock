@@ -5,12 +5,12 @@
 
 packages:
 - completed:
-    hackage: dir-traverse-0.2.2.3@sha256:cbb1e3d0d1f9a3cfcbdc58071fba8a2063bae36bab68279647a331f9a408c18a,2137
+    hackage: dir-traverse-0.2.3.0@sha256:adcc128f201ff95131b15ffe41365dc99c50dc3fa3a910f021521dc734013bfa,2137
     pantry-tree:
       size: 389
-      sha256: ba5b192c9bbd353ca46b3d308d4519ecf7a298e1d559c4350ddcee9591112246
+      sha256: b19f0562746dfd0f8f21eccab6584592f55fb781ca3e043da9132cc23d8a5b99
   original:
-    hackage: dir-traverse-0.2.2.3
+    hackage: dir-traverse-0.2.3.0
 snapshots:
 - completed:
     size: 532835
