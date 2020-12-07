@@ -1,14 +1,14 @@
-module Main where
+module Main (main) where
 
 import System.IO (Handle, IOMode(ReadMode), withFile)
 import System.IO.Strict (hGetContents)
 
-import Text.ParserCombinators.ReadP ((<++), (+++), choice, many, skipSpaces, munch1, readP_to_S, ReadP, string)
+import Text.ParserCombinators.ReadP ((<++), choice, many, skipSpaces, munch1, readP_to_S, ReadP, string)
 
 import Text.Pretty.Simple (pPrint)
 import Data.Char (isSpace)
 import System.Directory (listDirectory)
-import Control.Monad (forM, forM_)
+import Control.Monad (forM)
 
 getModuleContent :: Handle -> IO String
 getModuleContent = hGetContents
@@ -20,10 +20,11 @@ data ImportDecl = ImportDecl { importName :: String
                  | NoImportDecl
                  deriving (Eq, Show)
 
-data ModuleImportDecls = ModuleImportDecls { modulePath :: String
-                                           , fileName :: String
-                                           , imports :: [ImportDecl]
-                                           } deriving (Eq, Show)
+data ModuleImportDecls = 
+  ModuleImportDecls { modulePath :: String
+                    , fileName :: String
+                    , imports :: [ImportDecl]
+                    } deriving (Eq, Show)
 
 parseModule :: String -> FilePath -> IO ModuleImportDecls
 parseModule fname filePath = do
@@ -37,9 +38,6 @@ main = do
   dir <- listDirectory "./data/"
   results <- forM dir (\fname -> parseModule fname ("./data/" ++ fname))
   pPrint results
-
-moduleDeclLiteral :: ReadP String
-moduleDeclLiteral = string "module"
 
 importLit :: ReadP String
 importLit = string "import"
@@ -59,15 +57,13 @@ notWhitespace = not . isSpace
 
 openParen :: Char -> Bool
 openParen = (== '(')
-closeParen :: Char -> Bool
-closeParen = (== '(')
 
 importsParser :: ReadP [ImportDecl]
 importsParser = many importOrSkip
 
 basicImport :: ReadP ImportDecl
 basicImport = do
-  importLit
+  _ <- importLit
   skipSpaces
   m <- moduleName
   skipSpaces
@@ -75,9 +71,9 @@ basicImport = do
 
 qualImport :: ReadP ImportDecl
 qualImport = do
-  importLit
+  _ <- importLit
   skipSpaces
-  qualifiedLit
+  _ <- qualifiedLit
   skipSpaces
   m <- moduleName
   skipSpaces
@@ -85,13 +81,13 @@ qualImport = do
 
 qualAsImport :: ReadP ImportDecl
 qualAsImport = do
-  importLit
+  _ <- importLit
   skipSpaces
-  qualifiedLit
+  _ <- qualifiedLit
   skipSpaces
   m <- moduleName
   skipSpaces
-  asLit
+  _ <- asLit
   skipSpaces
   q <- moduleName
   skipSpaces
