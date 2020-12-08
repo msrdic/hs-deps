@@ -1,51 +1,61 @@
+module Main ( main ) where
 
+import System.IO ( Handle, IOMode(ReadMode), withFile )
 
-module Main (main) where
-
-import System.IO (Handle, IOMode(ReadMode), withFile)
-
-import System.IO.Strict (hGetContents)
+import System.IO.Strict ( hGetContents )
 import System.Directory.Recursive ( getFilesRecursive )
-import System.Environment (getArgs)
+import System.Environment ( getArgs )
 
-import Control.Monad (filterM, (>=>), forM)
+import Control.Monad (forM_,  filterM, (>=>), forM )
 
-import Text.ParserCombinators.ReadP (eof, munch, manyTill, (<++), choice, skipSpaces, munch1, readP_to_S, ReadP, string)
+import Text.ParserCombinators.ReadP (satisfy,  eof, munch, manyTill, (<++), choice
+                                    , skipSpaces, munch1, readP_to_S, ReadP
+                                    , string)
 
-import Data.Char (isSpace)
-import Data.List (isSuffixOf)
+import Data.Char ( isSpace )
+import Data.List ( isSuffixOf )
 
-import Algebra.Graph (edges)
-import Algebra.Graph.Export.Dot (exportAsIs )
+import Algebra.Graph ( edges )
+import Algebra.Graph.Export.Dot ( exportAsIs )
 
 getModuleContent :: Handle -> IO String
 getModuleContent = hGetContents
 
 type ModuleName = String
 
-data ImportDecl = ImportDecl { importName :: String
-                             , qual :: Bool
-                             , qualName :: Maybe String
+data ImportDecl = ImportDecl { importName :: !String
+                             , qual :: !Bool
+                             , qualName :: !(Maybe String)
                              } deriving (Eq, Show)
 
 data ModuleImportDecls = 
-  ModuleImportDecls { modulePath :: String
-                    , moduleName_ :: Maybe ModuleName
-                    , imports :: [Maybe ImportDecl]
+  ModuleImportDecls { modulePath :: !String
+                    , moduleName_ :: !(Maybe ModuleName)
+                    , imports :: ![Maybe ImportDecl]
                     } deriving (Eq, Show)
 
 parseModule :: FilePath -> IO ModuleImportDecls
 parseModule filePath = do
+  putStrLn $ "Parsing " ++ filePath ++ "..."
   c <- withFile filePath ReadMode getModuleContent
   let res = readP_to_S mainParser c
       result = if null res then (Just ".", []) else fst $ last res
       mname = fst result
-  return $ ModuleImportDecls filePath mname (filter (/= Nothing) $ snd result)
+      imps = filter (/= Nothing) $ snd result
+  forM_ imps (putStrLn . ('\t':) . show)
+  return $ ModuleImportDecls filePath mname imps
+
+getFilesRecursive' :: FilePath -> IO [FilePath]
+getFilesRecursive' fp = do
+  fs <- getFilesRecursive fp
+  fs' <- filterM hsOrLhs fs
+  putStrLn $ "Found " ++ show (length fs') ++ " files in " ++ fp
+  return fs'
 
 main :: IO ()
 main = do
   dirs <- getArgs
-  results <- forM dirs (getFilesRecursive >=> filterM hsOrLhs >=> mapM parseModule)
+  results <- forM dirs (getFilesRecursive' >=> mapM parseModule)
   let g = edges $ edges' $ concatMap toEdges $ concat results
   putStrLn $ exportAsIs g
 
