@@ -6,7 +6,7 @@ import System.IO.Strict ( hGetContents )
 import System.Directory.Recursive ( getFilesRecursive )
 import System.Environment ( getArgs )
 
-import Control.Monad (forM_,  filterM, (>=>), forM )
+import Control.Monad (filterM, (>=>), forM )
 
 import Text.ParserCombinators.ReadP ( eof, munch, manyTill, (<++), choice
                                     , skipSpaces, munch1, readP_to_S, ReadP
@@ -36,20 +36,19 @@ data ModuleImportDecls =
 
 parseModule :: FilePath -> IO ModuleImportDecls
 parseModule filePath = do
-  putStrLn $ "Parsing " ++ filePath ++ "..."
+  putStrLn $ "#Parsing " ++ filePath ++ "..."
   c <- withFile filePath ReadMode getModuleContent
   let res = readP_to_S mainParser c
       result = if null res then (Just ".", []) else fst $ last res
       mname = fst result
       imps = filter (/= Nothing) $ snd result
-  forM_ imps (putStrLn . ('\t':) . show)
   return $ ModuleImportDecls filePath mname imps
 
 getFilesRecursive' :: FilePath -> IO [FilePath]
 getFilesRecursive' fp = do
   fs <- getFilesRecursive fp
   fs' <- filterM hsOrLhs fs
-  putStrLn $ "Found " ++ show (length fs') ++ " files in " ++ fp
+  putStrLn $ "#Found " ++ show (length fs') ++ " files in " ++ fp
   return fs'
 
 main :: IO ()
@@ -164,3 +163,5 @@ mainParser = do
   skipSpaces
   im <- manyTill (importParser <++ skipLine) eof
   return (mn, im)
+
+-- attoparsec
