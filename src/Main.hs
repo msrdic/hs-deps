@@ -8,7 +8,7 @@ import System.Environment ( getArgs )
 
 import Control.Monad (forM_,  filterM, (>=>), forM )
 
-import Text.ParserCombinators.ReadP (satisfy,  eof, munch, manyTill, (<++), choice
+import Text.ParserCombinators.ReadP ( eof, munch, manyTill, (<++), choice
                                     , skipSpaces, munch1, readP_to_S, ReadP
                                     , string)
 
