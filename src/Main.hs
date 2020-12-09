@@ -97,41 +97,6 @@ notWhitespace = not . isSpace
 openParen :: Char -> Bool
 openParen = (== '(')
 
--- basicImport :: ReadP (Maybe ImportDecl)
--- basicImport = do
---   _ <- importLit
---   _ <- munch1 isSpace
---   m <- moduleName
---   _ <- munch (/= '\n')
---   skipSpaces
---   return $ Just (ImportDecl m False Nothing)
-
--- qualImport :: ReadP (Maybe ImportDecl)
--- qualImport = do
---   _ <- importLit
---   _ <- munch1 isSpace
---   _ <- qualifiedLit
---   _ <- munch1 isSpace
---   m <- moduleName
---   _ <- munch (/= '\n')
---   skipSpaces
---   return $ Just (ImportDecl m True Nothing)
-
--- qualAsImport :: ReadP (Maybe ImportDecl)
--- qualAsImport = do
---   _ <- importLit
---   _ <- munch1 isSpace
---   _ <- qualifiedLit
---   _ <- munch1 isSpace
---   m <- moduleName
---   _ <- munch1 isSpace
---   _ <- asLit
---   _ <- munch1 isSpace
---   q <- moduleName
---   _ <- munch (/= '\n')
---   skipSpaces
---   return $ Just (ImportDecl m True (Just q))
-
 skipLine :: ReadP (Maybe a)
 skipLine = do
   _ <- munch (/= '\n')
@@ -155,7 +120,6 @@ importParser = do
   _ <- munch (/= '\n')
   skipSpaces
   return $ Just (ImportDecl m True (Just q))
-  -- choice [basicImport, qualImport, qualAsImport]
 
 moduleNameParser :: ReadP (Maybe ModuleName)
 moduleNameParser = do
