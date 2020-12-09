@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Main ( main ) where
 
 import System.IO ( Handle, IOMode(ReadMode), withFile )
@@ -8,14 +9,15 @@ import System.Environment ( getArgs )
 
 import Control.Monad (filterM, (>=>), forM )
 
-import Text.ParserCombinators.ReadP ( eof, munch, manyTill, (<++), choice
+import Text.ParserCombinators.ReadP ( eof, munch, manyTill, (<++)
                                     , skipSpaces, munch1, readP_to_S, ReadP
                                     , string)
 
 import Data.Char ( isSpace )
 import Data.List ( isSuffixOf )
 
-import Algebra.Graph ( edges )
+import 
+  Algebra.Graph ( edges )
 import Algebra.Graph.Export.Dot ( exportAsIs )
 
 getModuleContent :: Handle -> IO String
@@ -95,28 +97,52 @@ notWhitespace = not . isSpace
 openParen :: Char -> Bool
 openParen = (== '(')
 
-basicImport :: ReadP (Maybe ImportDecl)
-basicImport = do
-  _ <- importLit
-  _ <- munch1 isSpace
-  m <- moduleName
+-- basicImport :: ReadP (Maybe ImportDecl)
+-- basicImport = do
+--   _ <- importLit
+--   _ <- munch1 isSpace
+--   m <- moduleName
+--   _ <- munch (/= '\n')
+--   skipSpaces
+--   return $ Just (ImportDecl m False Nothing)
+
+-- qualImport :: ReadP (Maybe ImportDecl)
+-- qualImport = do
+--   _ <- importLit
+--   _ <- munch1 isSpace
+--   _ <- qualifiedLit
+--   _ <- munch1 isSpace
+--   m <- moduleName
+--   _ <- munch (/= '\n')
+--   skipSpaces
+--   return $ Just (ImportDecl m True Nothing)
+
+-- qualAsImport :: ReadP (Maybe ImportDecl)
+-- qualAsImport = do
+--   _ <- importLit
+--   _ <- munch1 isSpace
+--   _ <- qualifiedLit
+--   _ <- munch1 isSpace
+--   m <- moduleName
+--   _ <- munch1 isSpace
+--   _ <- asLit
+--   _ <- munch1 isSpace
+--   q <- moduleName
+--   _ <- munch (/= '\n')
+--   skipSpaces
+--   return $ Just (ImportDecl m True (Just q))
+
+skipLine :: ReadP (Maybe a)
+skipLine = do
   _ <- munch (/= '\n')
   skipSpaces
-  return $ Just (ImportDecl m False Nothing)
+  return Nothing
 
-qualImport :: ReadP (Maybe ImportDecl)
-qualImport = do
-  _ <- importLit
-  _ <- munch1 isSpace
-  _ <- qualifiedLit
-  _ <- munch1 isSpace
-  m <- moduleName
-  _ <- munch (/= '\n')
-  skipSpaces
-  return $ Just (ImportDecl m True Nothing)
+skipLineS :: ReadP String
+skipLineS = skipLine >> return ""
 
-qualAsImport :: ReadP (Maybe ImportDecl)
-qualAsImport = do
+importParser :: ReadP (Maybe ImportDecl)
+importParser = do
   _ <- importLit
   _ <- munch1 isSpace
   _ <- qualifiedLit
@@ -129,19 +155,7 @@ qualAsImport = do
   _ <- munch (/= '\n')
   skipSpaces
   return $ Just (ImportDecl m True (Just q))
-
-skipLine :: ReadP (Maybe a)
-skipLine = do
-  _ <- munch (/= '\n')
-  skipSpaces
-  return Nothing
-
-skipLineS :: ReadP String
-skipLineS = skipLine >> return ""
-
-importParser :: ReadP (Maybe ImportDecl)
-importParser =
-  choice [basicImport, qualImport, qualAsImport]
+  -- choice [basicImport, qualImport, qualAsImport]
 
 moduleNameParser :: ReadP (Maybe ModuleName)
 moduleNameParser = do
@@ -163,5 +177,3 @@ mainParser = do
   skipSpaces
   im <- manyTill (importParser <++ skipLine) eof
   return (mn, im)
-
--- attoparsec
